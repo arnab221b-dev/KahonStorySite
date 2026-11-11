@@ -1,0 +1,98 @@
+name: Sync YouTube & Deploy Static Site
+
+on:
+  push:
+    branches: [main, master]
+  schedule:
+    # Once daily at 18:23 UTC (~23:53 IST) to pull new @kahonstory uploads
+    - cron: '23 18 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: kahon-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sync-build-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          pip install --quiet pillow
+
+      - name: Restore cumulative catalog baseline from gh-pages if available
+        run: |
+          if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
+            git fetch origin gh-pages --depth=1
+            if git cat-file -e origin/gh-pages:data/kahonData.json 2>/dev/null; then
+              git show origin/gh-pages:data/kahonData.json > /tmp/prev_catalog.json
+              python -c "import json; from pathlib import Path; prev = json.loads(Path('/tmp/prev_catalog.json').read_text('utf-8')); cp = Path('public/data/kahonData.json'); curr = json.loads(cp.read_text('utf-8')); (prev.get('generatedAt','') > curr.get('generatedAt','') and len(prev.get('stories',[])) >= len(curr.get('stories',[]))) and (cp.write_text(json.dumps(prev, ensure_ascii=False, indent=2), 'utf-8'), print('Restored newer cumulative baseline from origin/gh-pages'))"
+            fi
+          fi
+
+      - name: Sync @kahonstory YouTube catalog
+        run: python scripts/sync_kahon.py --ci
+
+      - name: Build static production bundle
+        run: npm run build
+
+      - name: Deploy dist/ to gh-pages branch
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          touch dist/.nojekyll
+          WORK_DIR="/tmp/gh-pages-deploy"
+          rm -rf "$WORK_DIR"
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if git ls-remote --exit-code --heads origin gh-pages >/dev/null 2>&1; then
+            git clone --branch gh-pages --single-branch --depth=1 \
+              "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" \
+              "$WORK_DIR"
+            find "$WORK_DIR" -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
+          else
+            git init "$WORK_DIR"
+            git -C "$WORK_DIR" checkout --orphan gh-pages
+            git -C "$WORK_DIR" remote add origin \
+              "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
+          fi
+
+          cp -a dist/. "$WORK_DIR/"
+
+          if [ "$EVENT_NAME" = "schedule" ] && [ -f /tmp/prev_catalog.json ]; then
+            CHANGED_CHECK=$(python -c "import json; from pathlib import Path; a = json.loads(Path('/tmp/prev_catalog.json').read_text('utf-8')); b = json.loads(Path('/tmp/gh-pages-deploy/data/kahonData.json').read_text('utf-8')); ka = [(s.get('id'), s.get('rawTitle'), s.get('publishedText')) for s in a.get('stories', [])]; kb = [(s.get('id'), s.get('rawTitle'), s.get('publishedText')) for s in b.get('stories', [])]; print('skip' if ka == kb else 'deploy')")
+            if [ "$CHANGED_CHECK" = "skip" ]; then
+              echo "No new videos or metadata updates; skipping gh-pages push."
+              exit 0
+            fi
+          fi
+
+          git -C "$WORK_DIR" add -A
+          if git -C "$WORK_DIR" diff --cached --quiet; then
+            echo "No changes to publish."
+            exit 0
+          fi
+          git -C "$WORK_DIR" commit -m "chore: build & sync Kahon catalog"
+          git -C "$WORK_DIR" push origin gh-pages

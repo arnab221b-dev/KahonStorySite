@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <radialGradient id="g" cx="35%" cy="30%" r="75%">
+      <stop offset="0%" stop-color="#313131" />
+      <stop offset="100%" stop-color="#181818" />
+    </radialGradient>
+  </defs>
+  <rect width="64" height="64" rx="16" fill="url(#g)" />
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="none" stroke="#ff9900" stroke-opacity="0.35" stroke-width="2" />
+  <text x="32" y="43" text-anchor="middle" font-family="'Hind Siliguri', sans-serif" font-weight="700" font-size="34" fill="#ff9900">ক</text>
+</svg>

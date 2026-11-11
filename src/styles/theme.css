@@ -1,0 +1,100 @@
+:root {
+  /* Core required palette */
+  --color-accent: #ff9900;
+  --color-accent-rgb: 255, 153, 0;
+  --color-muted: #818181;
+  --color-surface-elevated: #454545;
+  --color-surface: #313131;
+  --color-canvas: #181818;
+
+  /* Derived soft UI tokens strictly anchored to the 5 palette colors */
+  --text-primary: #f6f3ee;
+  --text-secondary: #c9c5be;
+  --text-muted: #818181;
+
+  --glass-panel: rgba(49, 49, 49, 0.56);
+  --glass-panel-strong: rgba(24, 24, 24, 0.78);
+  --glass-card: rgba(49, 49, 49, 0.48);
+  --glass-card-hover: rgba(69, 69, 69, 0.62);
+  --glass-pill: rgba(69, 69, 69, 0.5);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-border-strong: rgba(69, 69, 69, 0.85);
+  --inner-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.07);
+
+  --shadow-soft: 0 18px 42px -14px rgba(0, 0, 0, 0.62);
+  --shadow-card: 0 12px 28px -10px rgba(0, 0, 0, 0.55);
+  --shadow-accent: 0 10px 28px -6px rgba(255, 153, 0, 0.45);
+
+  /* Dynamic cover-art ambient variables (updated dynamically by JS) */
+  --ambient-dominant: #4a3319;
+  --ambient-vibrant: #ff9900;
+  --ambient-secondary: #3a2b1c;
+  --ambient-deep: #1f1812;
+  --ambient-dominant-rgb: 74, 51, 25;
+  --ambient-vibrant-rgb: 255, 153, 0;
+  --ambient-secondary-rgb: 58, 43, 28;
+  --ambient-deep-rgb: 31, 24, 18;
+
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 22px;
+  --radius-xl: 28px;
+  --radius-pill: 9999px;
+
+  --font-sans: 'Plus Jakarta Sans', 'Hind Siliguri', system-ui, -apple-system, sans-serif;
+  --ease-dreamy: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --player-height: 92px;
+  --sidebar-width: 276px;
+  --right-panel-width: 340px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background-color: var(--color-canvas);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+
+button,
+input,
+select {
+  font-family: inherit;
+  color: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Soft custom scrollbars */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(129, 129, 129, 0.32);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 153, 0, 0.55);
+}
