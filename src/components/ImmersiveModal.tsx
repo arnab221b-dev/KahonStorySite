@@ -1,27 +1,20 @@
-import { ChevronDown, ExternalLink, Heart, Pause, Play, RotateCcw, RotateCw, SkipBack, SkipForward } from 'lucide-react';
+import { ChevronDown, ExternalLink, Heart, SkipBack, SkipForward } from 'lucide-react';
 import { useLanguage } from '../i18n/LanguageContext';
 import type { Story } from '../types';
 import type { CarouselNeighbors, CarouselReason } from '../utils/carousel';
-import { formatTime } from '../utils/format';
 import { CoverImage } from './CoverImage';
 
 interface ImmersiveModalProps {
   story: Story;
   carousel: CarouselNeighbors;
-  isPlaying: boolean;
   isLiked: boolean;
-  currentTime: number;
-  duration: number;
   playbackRate: number;
   stageSlotRef: React.RefObject<HTMLDivElement>;
   onClose: () => void;
-  onTogglePlay: () => void;
   onPrev: () => void;
   onNext: () => void;
   onSelectPrevNeighbor: (story: Story) => void;
   onSelectNextNeighbor: (story: Story) => void;
-  onSeek: (seconds: number) => void;
-  onSkipBy: (delta: number) => void;
   onToggleLike: (storyId: string) => void;
   onCycleSpeed: () => void;
 }
@@ -29,26 +22,18 @@ interface ImmersiveModalProps {
 export function ImmersiveModal({
   story,
   carousel,
-  isPlaying,
   isLiked,
-  currentTime,
-  duration,
   playbackRate,
   stageSlotRef,
   onClose,
-  onTogglePlay,
   onPrev,
   onNext,
   onSelectPrevNeighbor,
   onSelectNextNeighbor,
-  onSeek,
-  onSkipBy,
   onToggleLike,
   onCycleSpeed,
 }: ImmersiveModalProps) {
-  const { lang, t, digits, genreLabel, viewsLabel } = useLanguage();
-  const effectiveDuration = duration > 0 ? duration : story.durationSeconds;
-  const pct = effectiveDuration > 0 ? Math.min(100, (currentTime / effectiveDuration) * 100) : 0;
+  const { t, digits, genreLabel, viewsLabel } = useLanguage();
 
   const reasonLabel = (reason: CarouselReason, side: 'prev' | 'next'): string => {
     if (reason === 'series') return t('carouselSeries');
@@ -183,67 +168,33 @@ export function ImmersiveModal({
           </div>
         </div>
 
-        <div className="immersive-controls">
-          <div className="scrubber-row">
-            <span className="time-label">{formatTime(currentTime, lang)}</span>
-            <input
-              type="range"
-              min={0}
-              max={Math.max(1, Math.floor(effectiveDuration))}
-              value={Math.min(Math.floor(currentTime), Math.max(1, Math.floor(effectiveDuration)))}
-              onChange={(e) => onSeek(Number(e.target.value))}
-              className="dream-range"
-              style={{
-                background: `linear-gradient(90deg, #ff9900 ${pct}%, rgba(129, 129, 129, 0.34) ${pct}%)`,
-              }}
-            />
-            <span className="time-label time-label--right">{formatTime(effectiveDuration, lang)}</span>
-          </div>
+        <div className="immersive-controls immersive-controls--minimal">
+          <button type="button" className="soft-btn" onClick={onPrev} title={t('previousStory')}>
+            <SkipBack size={16} />
+            <span>{t('carouselPrev')}</span>
+          </button>
 
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 18 }}>
-            <button
-              type="button"
-              className={`mini-icon-btn ${isLiked ? 'mini-icon-btn--liked' : ''}`}
-              onClick={() => onToggleLike(story.id)}
-              title={t('likeStory')}
-            >
-              <Heart size={20} fill={isLiked ? 'currentColor' : 'none'} />
-            </button>
+          <button
+            type="button"
+            className={`mini-icon-btn ${isLiked ? 'mini-icon-btn--liked' : ''}`}
+            onClick={() => onToggleLike(story.id)}
+            title={isLiked ? t('unlikeStory') : t('likeStory')}
+          >
+            <Heart size={18} fill={isLiked ? 'currentColor' : 'none'} />
+          </button>
 
-            <button type="button" className="ctrl-btn" onClick={onPrev} title={t('previousStory')}>
-              <SkipBack size={22} />
-            </button>
+          <button
+            type="button"
+            className={`speed-pill ${playbackRate !== 1 ? 'speed-pill--active' : ''}`}
+            onClick={onCycleSpeed}
+          >
+            {digits(playbackRate)}x
+          </button>
 
-            <button type="button" className="ctrl-btn" onClick={() => onSkipBy(-15)} title={t('rewind15')}>
-              <RotateCcw size={20} />
-            </button>
-
-            <button
-              type="button"
-              className="ctrl-btn ctrl-btn--play"
-              style={{ width: 60, height: 60 }}
-              onClick={onTogglePlay}
-              aria-label={isPlaying ? t('pause') : t('play')}
-            >
-              {isPlaying ? <Pause size={26} fill="currentColor" /> : <Play size={26} fill="currentColor" style={{ marginLeft: 3 }} />}
-            </button>
-
-            <button type="button" className="ctrl-btn" onClick={() => onSkipBy(30)} title={t('forward30')}>
-              <RotateCw size={20} />
-            </button>
-
-            <button type="button" className="ctrl-btn" onClick={onNext} title={t('nextStory')}>
-              <SkipForward size={22} />
-            </button>
-
-            <button
-              type="button"
-              className={`speed-pill ${playbackRate !== 1 ? 'speed-pill--active' : ''}`}
-              onClick={onCycleSpeed}
-            >
-              {digits(playbackRate)}x
-            </button>
-          </div>
+          <button type="button" className="soft-btn" onClick={onNext} title={t('nextStory')}>
+            <span>{t('carouselNext')}</span>
+            <SkipForward size={16} />
+          </button>
         </div>
       </div>
 

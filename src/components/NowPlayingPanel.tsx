@@ -117,82 +117,67 @@ export function NowPlayingPanel({
         )}
       </div>
 
-      {/* Carousel in Now Playing tab: Previous on Left, Live YouTube Stage Middle, Next on Right */}
+      {/* Video-centric Now Playing hero + Left/Right Previous & Next carousel */}
       {tab === 'now' && (
         <div className="np-carousel">
-          <div className="np-carousel-stage">
-            {carousel.prevStory ? (
-              <button
-                type="button"
-                className="np-peek-card"
-                title={`${t('carouselPrev')}: ${carousel.prevStory.title}`}
-                aria-label={`${t('carouselPrev')}: ${carousel.prevStory.title}`}
-                onClick={() => onSelectPrevNeighbor(carousel.prevStory!)}
-              >
-                <CoverImage
-                  src={carousel.prevStory.thumbnail}
-                  fallbackSrc={carousel.prevStory.thumbnailFallback}
-                  alt={carousel.prevStory.title}
-                  eager
-                />
-                <span className="np-peek-chevron">
-                  <ChevronLeft size={18} />
-                </span>
-              </button>
-            ) : (
-              <div />
-            )}
-
-            <div ref={stageSlotRef} className="media-stage-card" />
-
-            {carousel.nextStory ? (
-              <button
-                type="button"
-                className="np-peek-card"
-                title={`${t('carouselNext')}: ${carousel.nextStory.title}`}
-                aria-label={`${t('carouselNext')}: ${carousel.nextStory.title}`}
-                onClick={() => onSelectNextNeighbor(carousel.nextStory!)}
-              >
-                <CoverImage
-                  src={carousel.nextStory.thumbnail}
-                  fallbackSrc={carousel.nextStory.thumbnailFallback}
-                  alt={carousel.nextStory.title}
-                  eager
-                />
-                <span className="np-peek-chevron">
-                  <ChevronRight size={18} />
-                </span>
-              </button>
-            ) : (
-              <div />
-            )}
-          </div>
+          <div ref={stageSlotRef} className="media-stage-card" />
 
           <div className="np-carousel-captions">
             {carousel.prevStory ? (
               <button
                 type="button"
-                className="np-neighbor-pill"
+                className="np-peek-card np-neighbor-pill"
+                title={`${t('carouselPrev')}: ${carousel.prevStory.title}`}
+                aria-label={`${t('carouselPrev')}: ${carousel.prevStory.title}`}
                 onClick={() => onSelectPrevNeighbor(carousel.prevStory!)}
               >
-                <span className="np-neighbor-tag">
-                  ← {reasonLabel(carousel.prevReason, 'prev')}
-                </span>
-                <span className="np-neighbor-title">{carousel.prevStory.title}</span>
+                <div className="np-peek-thumb-wrap">
+                  <CoverImage
+                    src={carousel.prevStory.thumbnail}
+                    fallbackSrc={carousel.prevStory.thumbnailFallback}
+                    alt={carousel.prevStory.title}
+                    eager
+                  />
+                  <span className="np-peek-chevron">
+                    <ChevronLeft size={14} />
+                  </span>
+                </div>
+                <div className="np-neighbor-info">
+                  <span className="np-neighbor-tag">
+                    ← {reasonLabel(carousel.prevReason, 'prev')}
+                  </span>
+                  <span className="np-neighbor-title">{carousel.prevStory.title}</span>
+                </div>
               </button>
             ) : (
               <div />
             )}
+
             {carousel.nextStory ? (
               <button
                 type="button"
-                className="np-neighbor-pill np-neighbor-pill--right"
+                className="np-peek-card np-neighbor-pill np-neighbor-pill--right"
+                title={`${t('carouselNext')}: ${carousel.nextStory.title}`}
+                aria-label={`${t('carouselNext')}: ${carousel.nextStory.title}`}
                 onClick={() => onSelectNextNeighbor(carousel.nextStory!)}
               >
-                <span className="np-neighbor-tag">
-                  {reasonLabel(carousel.nextReason, 'next')} →
-                </span>
-                <span className="np-neighbor-title">{carousel.nextStory.title}</span>
+                <div className="np-neighbor-info">
+                  <span className="np-neighbor-tag">
+                    {reasonLabel(carousel.nextReason, 'next')} →
+                  </span>
+                  <span className="np-neighbor-title">{carousel.nextStory.title}</span>
+                </div>
+                <div className="np-peek-thumb-wrap">
+                  <CoverImage
+                    src={carousel.nextStory.thumbnail}
+                    fallbackSrc={carousel.nextStory.thumbnailFallback}
+                    alt={carousel.nextStory.title}
+                    eager
+                  />
+                  <span className="np-peek-chevron">
+                    <ChevronRight size={14} />
+                  </span>
+                </div>
               </button>
             ) : (
               <div />

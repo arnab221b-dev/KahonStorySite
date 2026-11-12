@@ -919,20 +919,14 @@ function KahonPlayerApp({ catalog }: { catalog: KahonCatalog }) {
         <ImmersiveModal
           story={currentStory}
           carousel={carousel}
-          isPlaying={isPlaying}
           isLiked={likedSet.has(currentStory.id)}
-          currentTime={currentTime}
-          duration={duration}
           playbackRate={playbackRate}
           stageSlotRef={immersiveStageSlotRef}
           onClose={() => setImmersiveOpen(false)}
-          onTogglePlay={togglePlay}
           onPrev={handlePrev}
           onNext={handleNext}
           onSelectPrevNeighbor={handleSelectPrevNeighbor}
           onSelectNextNeighbor={handleSelectNextNeighbor}
-          onSeek={seekTo}
-          onSkipBy={skipBy}
           onToggleLike={handleToggleLike}
           onCycleSpeed={handleCycleSpeed}
         />

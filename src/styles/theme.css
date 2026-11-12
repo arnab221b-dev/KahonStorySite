@@ -46,7 +46,7 @@
 
   --player-height: 92px;
   --sidebar-width: 276px;
-  --right-panel-width: 392px;
+  --right-panel-width: clamp(390px, 30vw, 444px);
 }
 
 *,
