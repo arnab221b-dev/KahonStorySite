@@ -1502,9 +1502,12 @@
 
 .media-stage-card {
   position: relative;
+  width: 100%;
+  height: 200px;
+  min-height: 200px;
+  min-width: 200px;
   border-radius: var(--radius-md);
   overflow: hidden;
-  aspect-ratio: 16 / 10;
   background: #181818;
   border: 1px solid rgba(255, 255, 255, 0.14);
   box-shadow: 0 20px 44px -12px rgba(var(--ambient-vibrant-rgb), 0.36);
@@ -1521,14 +1524,14 @@
 
 .np-carousel-stage {
   display: grid;
-  grid-template-columns: 34px minmax(0, 1fr) 34px;
+  grid-template-columns: 30px minmax(200px, 1fr) 30px;
   align-items: center;
   gap: 6px;
 }
 
 .np-peek-card {
   position: relative;
-  height: 124px;
+  height: 140px;
   border-radius: 11px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -1684,67 +1687,102 @@
   }
 }
 
-.yt-iframe-layer {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  transition: opacity 0.35s ease;
+/* Persistent single YouTube IFrame container positioned into active visible stage */
+.yt-persistent-dock {
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: #181818;
+  box-shadow: 0 20px 44px -12px rgba(0, 0, 0, 0.72);
+  pointer-events: auto;
 }
 
-.yt-iframe-layer iframe {
-  width: 100%;
-  height: 100%;
-  border: 0;
+.yt-persistent-dock--mini {
+  right: 14px;
+  bottom: calc(var(--player-height) + 12px);
+  width: 224px;
+  z-index: 55;
+  border: 1px solid rgba(255, 153, 0, 0.42);
+  border-radius: 14px;
+  box-shadow: 0 22px 48px rgba(0, 0, 0, 0.85);
 }
 
-.yt-iframe-layer--audio-only {
-  opacity: 0.01;
-  pointer-events: none;
-}
-
-.cover-stage-overlay {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  transition: opacity 0.35s ease;
-}
-
-.cover-stage-overlay--hidden {
+.yt-persistent-dock--standby {
+  left: -9999px;
+  top: -9999px;
+  width: 240px;
+  height: 200px;
   opacity: 0;
   pointer-events: none;
 }
 
-.cover-stage-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
+.yt-mini-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 8px;
+  background: rgba(24, 24, 24, 0.96);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-primary);
 }
 
-.stage-mode-toggle {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 4;
-  padding: 5px 10px;
-  border-radius: var(--radius-pill);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  background: rgba(24, 24, 24, 0.78);
-  backdrop-filter: blur(10px);
+.yt-mini-title {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+}
+
+.yt-mini-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.yt-mini-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(49, 49, 49, 0.8);
   color: var(--text-primary);
-  font-size: 0.72rem;
-  font-weight: 700;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
   cursor: pointer;
-  transition: all 0.2s ease;
 }
 
-.stage-mode-toggle:hover {
+.yt-mini-btn:hover {
   border-color: var(--color-accent);
   color: var(--color-accent);
+}
+
+.yt-iframe-host {
+  width: 100%;
+  height: 100%;
+  min-width: 200px;
+  min-height: 200px;
+  flex: 1;
+}
+
+.yt-persistent-dock--mini .yt-iframe-host {
+  width: 224px;
+  height: 200px;
+  flex: none;
+}
+
+.yt-iframe-host iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
 }
 
 .now-meta-card {
@@ -2223,7 +2261,10 @@
   position: relative;
   width: 100%;
   aspect-ratio: 16 / 10;
-  border-radius: 26px;
+  min-width: 240px;
+  min-height: 220px;
+  background: #181818;
+  border-radius: 24px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.16);
   box-shadow: 0 32px 80px -12px rgba(var(--ambient-vibrant-rgb), 0.45),
@@ -2285,7 +2326,7 @@
     top: 12px;
     right: 12px;
     bottom: calc(var(--player-height) + 24px);
-    width: min(350px, calc(100vw - 24px));
+    width: min(370px, calc(100vw - 24px));
     z-index: 45;
     transform: translateX(calc(100% + 24px));
     transition: transform 0.35s var(--ease-dreamy);
@@ -2346,6 +2387,13 @@
     padding: 10px 14px;
     margin: 8px;
     gap: 10px;
+  }
+  .yt-persistent-dock--mini {
+    right: 10px;
+    bottom: 144px;
+  }
+  .immersive-overlay {
+    padding: 18px 18px 22px;
   }
   .player-center {
     grid-column: 1 / -1;

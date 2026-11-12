@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Maximize2, X } from 'lucide-react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type {
   KahonCatalog,
   NavSection,
@@ -164,10 +165,20 @@ function KahonPlayerApp({ catalog }: { catalog: KahonCatalog }) {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
+  const [rightPanelTab, setRightPanelTab] = useState<'now' | 'queue'>('now');
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [mobileRightOpen, setMobileRightOpen] = useState(false);
   const [immersiveOpen, setImmersiveOpen] = useState(false);
-  const [showVideo, setShowVideo] = useState(false);
+  const [isNarrowViewport, setIsNarrowViewport] = useState(
+    () => typeof window !== 'undefined' && window.innerWidth <= 1220
+  );
+  const [miniDismissed, setMiniDismissed] = useState(false);
+  const [stageRect, setStageRect] = useState<{
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+  } | null>(null);
   const [hoveredPalette, setHoveredPalette] = useState<Palette | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -189,6 +200,8 @@ function KahonPlayerApp({ catalog }: { catalog: KahonCatalog }) {
   const [sleepEndOfStory, setSleepEndOfStory] = useState(false);
 
   const playerContainerRef = useRef<HTMLDivElement | null>(null);
+  const npStageSlotRef = useRef<HTMLDivElement | null>(null);
+  const immersiveStageSlotRef = useRef<HTMLDivElement | null>(null);
   const lastSavedTickRef = useRef<number>(0);
 
   const showToast = useCallback((msg: string) => {
@@ -447,6 +460,87 @@ function KahonPlayerApp({ catalog }: { catalog: KahonCatalog }) {
   useEffect(() => {
     applyAmbientPalette(activePalette);
   }, [activePalette]);
+
+  useEffect(() => {
+    const onResize = () => setIsNarrowViewport(window.innerWidth <= 1220);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  useEffect(() => {
+    if (isPlaying || isBuffering || autoplayToken > 0) {
+      setMiniDismissed(false);
+    }
+  }, [isPlaying, isBuffering, autoplayToken]);
+
+  const nowPlayingSlotVisible =
+    !immersiveOpen &&
+    rightPanelTab === 'now' &&
+    (isNarrowViewport ? mobileRightOpen : rightPanelOpen);
+
+  const dockMode: 'immersive' | 'now-playing' | 'mini' | 'standby' = immersiveOpen
+    ? 'immersive'
+    : nowPlayingSlotVisible
+    ? 'now-playing'
+    : (isPlaying || isBuffering) && !miniDismissed
+    ? 'mini'
+    : 'standby';
+
+  useLayoutEffect(() => {
+    const slotEl =
+      dockMode === 'immersive'
+        ? immersiveStageSlotRef.current
+        : dockMode === 'now-playing'
+        ? npStageSlotRef.current
+        : null;
+
+    if (!slotEl) {
+      setStageRect(null);
+      return;
+    }
+
+    const updateRect = () => {
+      const r = slotEl.getBoundingClientRect();
+      if (r.width < 150 || r.height < 150) return;
+      setStageRect((prev) => {
+        if (
+          prev &&
+          Math.abs(prev.left - r.left) < 0.5 &&
+          Math.abs(prev.top - r.top) < 0.5 &&
+          Math.abs(prev.width - r.width) < 0.5 &&
+          Math.abs(prev.height - r.height) < 0.5
+        ) {
+          return prev;
+        }
+        return { left: r.left, top: r.top, width: r.width, height: r.height };
+      });
+    };
+
+    updateRect();
+
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      ro = new ResizeObserver(updateRect);
+      ro.observe(slotEl);
+    }
+
+    let rafId = 0;
+    const endAt = performance.now() + 450;
+    const trackTransition = () => {
+      updateRect();
+      if (performance.now() < endAt) {
+        rafId = window.requestAnimationFrame(trackTransition);
+      }
+    };
+    rafId = window.requestAnimationFrame(trackTransition);
+
+    window.addEventListener('resize', updateRect);
+    return () => {
+      window.cancelAnimationFrame(rafId);
+      window.removeEventListener('resize', updateRect);
+      ro?.disconnect();
+    };
+  }, [dockMode, rightPanelOpen, mobileRightOpen, rightPanelTab, isNarrowViewport]);
 
   // Media Session OS Integration
   useEffect(() => {
@@ -755,13 +849,13 @@ function KahonPlayerApp({ catalog }: { catalog: KahonCatalog }) {
           queue={queue}
           isPlaying={isPlaying}
           isLiked={likedSet.has(currentStory.id)}
-          showVideo={showVideo}
           embedError={embedError}
-          playerContainerRef={playerContainerRef}
+          tab={rightPanelTab}
+          stageSlotRef={npStageSlotRef}
           desktopHidden={!rightPanelOpen}
           openMobile={mobileRightOpen}
+          onChangeTab={setRightPanelTab}
           onCloseMobile={() => setMobileRightOpen(false)}
-          onToggleShowVideo={() => setShowVideo((v) => !v)}
           onToggleLike={handleToggleLike}
           onPlayStory={(s) => playStory(s)}
           onSelectPrevNeighbor={handleSelectPrevNeighbor}
@@ -830,6 +924,7 @@ function KahonPlayerApp({ catalog }: { catalog: KahonCatalog }) {
           currentTime={currentTime}
           duration={duration}
           playbackRate={playbackRate}
+          stageSlotRef={immersiveStageSlotRef}
           onClose={() => setImmersiveOpen(false)}
           onTogglePlay={togglePlay}
           onPrev={handlePrev}
@@ -842,6 +937,66 @@ function KahonPlayerApp({ catalog }: { catalog: KahonCatalog }) {
           onCycleSpeed={handleCycleSpeed}
         />
       )}
+
+      {/* Single persistent YouTube player dock shared across Now Playing, Immersive, and Mini view */}
+      <div
+        className={`yt-persistent-dock ${
+          dockMode === 'mini'
+            ? 'yt-persistent-dock--mini'
+            : dockMode === 'standby' || !stageRect
+            ? 'yt-persistent-dock--standby'
+            : ''
+        }`}
+        style={
+          (dockMode === 'immersive' || dockMode === 'now-playing') && stageRect
+            ? {
+                left: stageRect.left,
+                top: stageRect.top,
+                width: stageRect.width,
+                height: stageRect.height,
+                zIndex: dockMode === 'immersive' ? 82 : isNarrowViewport ? 47 : 15,
+                borderRadius: dockMode === 'immersive' ? 24 : 16,
+              }
+            : undefined
+        }
+      >
+        {dockMode === 'mini' && (
+          <div className="yt-mini-bar">
+            <span className="yt-mini-title">{currentStory.title}</span>
+            <div className="yt-mini-actions">
+              <button
+                type="button"
+                className="yt-mini-btn"
+                title={t('nowPlaying')}
+                aria-label={t('nowPlaying')}
+                onClick={() => {
+                  setRightPanelTab('now');
+                  if (isNarrowViewport) {
+                    setMobileRightOpen(true);
+                  } else {
+                    setRightPanelOpen(true);
+                  }
+                }}
+              >
+                <Maximize2 size={12} />
+              </button>
+              <button
+                type="button"
+                className="yt-mini-btn"
+                title={t('pause')}
+                aria-label={t('pause')}
+                onClick={() => {
+                  pause();
+                  setMiniDismissed(true);
+                }}
+              >
+                <X size={12} />
+              </button>
+            </div>
+          </div>
+        )}
+        <div ref={playerContainerRef} className="yt-iframe-host" />
+      </div>
 
       {toast && (
         <div

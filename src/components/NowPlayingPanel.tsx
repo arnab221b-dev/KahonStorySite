@@ -2,15 +2,12 @@ import {
   ChevronLeft,
   ChevronRight,
   ExternalLink,
-  Eye,
-  EyeOff,
   Heart,
   ListMusic,
   Sparkles,
   Trash2,
   X,
 } from 'lucide-react';
-import { useState } from 'react';
 import type { EmbedErrorCode } from '../hooks/useYouTubePlayer';
 import { useLanguage } from '../i18n/LanguageContext';
 import { localizePlaylistMeta } from '../i18n/translations';
@@ -26,13 +23,13 @@ interface NowPlayingPanelProps {
   queue: Story[];
   isPlaying: boolean;
   isLiked: boolean;
-  showVideo: boolean;
   embedError: EmbedErrorCode;
-  playerContainerRef: React.RefObject<HTMLDivElement>;
+  tab: 'now' | 'queue';
+  stageSlotRef: React.RefObject<HTMLDivElement>;
   desktopHidden: boolean;
   openMobile: boolean;
+  onChangeTab: (tab: 'now' | 'queue') => void;
   onCloseMobile: () => void;
-  onToggleShowVideo: () => void;
   onToggleLike: (storyId: string) => void;
   onPlayStory: (story: Story) => void;
   onSelectPrevNeighbor: (story: Story) => void;
@@ -50,13 +47,13 @@ export function NowPlayingPanel({
   queue,
   isPlaying,
   isLiked,
-  showVideo,
   embedError,
-  playerContainerRef,
+  tab,
+  stageSlotRef,
   desktopHidden,
   openMobile,
+  onChangeTab,
   onCloseMobile,
-  onToggleShowVideo,
   onToggleLike,
   onPlayStory,
   onSelectPrevNeighbor,
@@ -66,7 +63,6 @@ export function NowPlayingPanel({
   onOpenPlaylist,
   onOpenAuthor,
 }: NowPlayingPanelProps) {
-  const [tab, setTab] = useState<'now' | 'queue'>('now');
   const { lang, t, digits, genreLabel, timeAgoLabel, viewsLabel } = useLanguage();
 
   const embedErrorText =
@@ -96,14 +92,14 @@ export function NowPlayingPanel({
           <button
             type="button"
             className={`panel-tab ${tab === 'now' ? 'panel-tab--active' : ''}`}
-            onClick={() => setTab('now')}
+            onClick={() => onChangeTab('now')}
           >
             {t('nowPlaying')}
           </button>
           <button
             type="button"
             className={`panel-tab ${tab === 'queue' ? 'panel-tab--active' : ''}`}
-            onClick={() => setTab('queue')}
+            onClick={() => onChangeTab('queue')}
           >
             {t('queue')} ({digits(queue.length)})
           </button>
@@ -121,12 +117,9 @@ export function NowPlayingPanel({
         )}
       </div>
 
-      <div className="right-panel-scroll">
-        {/* Carousel in Now Playing tab: Previous on Left, Now Playing Middle, Next on Right */}
-        <div
-          className="np-carousel"
-          style={{ display: tab === 'now' ? 'flex' : 'none' }}
-        >
+      {/* Carousel in Now Playing tab: Previous on Left, Live YouTube Stage Middle, Next on Right */}
+      {tab === 'now' && (
+        <div className="np-carousel">
           <div className="np-carousel-stage">
             {carousel.prevStory ? (
               <button
@@ -150,32 +143,7 @@ export function NowPlayingPanel({
               <div />
             )}
 
-            <div className="media-stage-card">
-              <div
-                ref={playerContainerRef}
-                className={`yt-iframe-layer ${showVideo ? '' : 'yt-iframe-layer--audio-only'}`}
-              />
-
-              <div className={`cover-stage-overlay ${showVideo ? 'cover-stage-overlay--hidden' : ''}`}>
-                <CoverImage
-                  src={currentStory.thumbnail}
-                  fallbackSrc={currentStory.thumbnailFallback}
-                  alt={currentStory.title}
-                  className="cover-stage-img"
-                  eager
-                />
-              </div>
-
-              <button
-                type="button"
-                className="stage-mode-toggle"
-                onClick={onToggleShowVideo}
-                title={showVideo ? t('coverArt') : t('watchVideo')}
-              >
-                {showVideo ? <EyeOff size={13} /> : <Eye size={13} />}
-                <span>{showVideo ? t('coverArt') : t('watchVideo')}</span>
-              </button>
-            </div>
+            <div ref={stageSlotRef} className="media-stage-card" />
 
             {carousel.nextStory ? (
               <button
@@ -231,7 +199,9 @@ export function NowPlayingPanel({
             )}
           </div>
         </div>
+      )}
 
+      <div className="right-panel-scroll">
         {embedErrorText && (
           <div className="toast-banner">
             <span>{embedErrorText}</span>

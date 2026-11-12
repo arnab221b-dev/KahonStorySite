@@ -13,6 +13,7 @@ interface ImmersiveModalProps {
   currentTime: number;
   duration: number;
   playbackRate: number;
+  stageSlotRef: React.RefObject<HTMLDivElement>;
   onClose: () => void;
   onTogglePlay: () => void;
   onPrev: () => void;
@@ -33,6 +34,7 @@ export function ImmersiveModal({
   currentTime,
   duration,
   playbackRate,
+  stageSlotRef,
   onClose,
   onTogglePlay,
   onPrev,
@@ -128,14 +130,7 @@ export function ImmersiveModal({
             <div />
           )}
 
-          <div className="immersive-art-frame">
-            <CoverImage
-              src={story.thumbnail}
-              fallbackSrc={story.thumbnailFallback}
-              alt={story.title}
-              eager
-            />
-          </div>
+          <div ref={stageSlotRef} className="immersive-art-frame" />
 
           {carousel.nextStory ? (
             <button
