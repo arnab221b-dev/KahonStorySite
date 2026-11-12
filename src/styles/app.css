@@ -2217,6 +2217,35 @@
   animation: fadeIn 0.35s var(--ease-dreamy);
 }
 
+.immersive-ambient-art-wrap {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+  z-index: 0;
+}
+
+.immersive-ambient-art {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  opacity: 0.26;
+  filter: blur(18px) saturate(1.25);
+  transform: scale(1.08);
+}
+
+.immersive-ambient-scrim {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    80% 72% at 50% 42%,
+    rgba(24, 24, 24, 0.28) 0%,
+    rgba(24, 24, 24, 0.84) 100%
+  );
+}
+
 .immersive-brand-overlay {
   position: absolute;
   right: 4%;

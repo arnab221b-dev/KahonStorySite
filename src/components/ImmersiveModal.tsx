@@ -59,6 +59,17 @@ export function ImmersiveModal({
 
   return (
     <div className="immersive-overlay" role="dialog" aria-modal="true" aria-label={t('immersiveHeader')}>
+      <div className="immersive-ambient-art-wrap" aria-hidden="true">
+        <CoverImage
+          key={story.id}
+          src={story.thumbnail}
+          fallbackSrc={story.thumbnailFallback}
+          alt=""
+          className="immersive-ambient-art"
+          eager
+        />
+        <div className="immersive-ambient-scrim" />
+      </div>
       <img
         src="./images/kahon-overlay.png"
         alt=""
