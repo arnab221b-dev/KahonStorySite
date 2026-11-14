@@ -39,6 +39,7 @@ HEADERS = {
         "Chrome/130.0.0.0 Safari/537.36"
     ),
     "Accept-Language": "en-US,en;q=0.9",
+    "Cookie": "SOCS=CAESEwgDEgk2OTcyMTY1NjAaAmVuIAEaBgiA_LyaBg; CONSENT=PENDING+999",
 }
 
 
@@ -53,6 +54,12 @@ def extract_yt_initial_data(url: str) -> tuple[dict[str, Any], str | None, str |
     m = re.search(r"var ytInitialData = (\{.*?\});</script>", html)
     if not m:
         m = re.search(r'window\["ytInitialData"\] = (\{.*?\});', html)
+    if not m:
+        m = re.search(
+            r"(?:var\s+|window\[['\"]ytInitialData['\"]\]\s*=\s*|ytInitialData\s*=\s*)(\{.+?\});\s*(?:</script>|\n)",
+            html,
+            re.DOTALL,
+        )
     if not m:
         raise RuntimeError(f"Could not locate ytInitialData on {url}")
     api_key = re.search(r'"INNERTUBE_API_KEY":"([^"]+)"', html)
@@ -278,51 +285,58 @@ def fetch_paginated_tab(tab_name: str) -> tuple[dict[str, Any], list[dict[str, A
     return data, items
 
 
-def fetch_playlist_videos(playlist_id: str) -> tuple[str, list[str]]:
+def fetch_playlist_videos(playlist_id: str, max_retries: int = 2) -> tuple[str, list[str]]:
     url = f"https://www.youtube.com/playlist?list={playlist_id}"
-    data, api_key, client_ver = extract_yt_initial_data(url)
-    tabs = data["contents"]["twoColumnBrowseResultsRenderer"]["tabs"]
-    content = tabs[0]["tabRenderer"]["content"]
-    secs = content.get("sectionListRenderer", {}).get("contents", [])
+    last_err: Exception | None = None
+    for attempt in range(max_retries + 1):
+        try:
+            data, api_key, client_ver = extract_yt_initial_data(url)
+            tabs = data.get("contents", {}).get("twoColumnBrowseResultsRenderer", {}).get("tabs", [])
+            content = tabs[0]["tabRenderer"]["content"] if tabs else {}
+            secs = content.get("sectionListRenderer", {}).get("contents", [])
 
-    video_ids: list[str] = []
-    cont_token: str | None = None
+            video_ids: list[str] = []
+            cont_token: str | None = None
 
-    if secs and "itemSectionRenderer" in secs[0]:
-        for it in secs[0]["itemSectionRenderer"].get("contents", []):
-            if "lockupViewModel" in it:
-                vid = it["lockupViewModel"].get("contentId")
-                if vid:
-                    video_ids.append(vid)
-            else:
-                tok = get_continuation_token(it)
-                if tok:
-                    cont_token = tok
+            if secs and "itemSectionRenderer" in secs[0]:
+                for it in secs[0]["itemSectionRenderer"].get("contents", []):
+                    if "lockupViewModel" in it:
+                        vid = it["lockupViewModel"].get("contentId")
+                        if vid:
+                            video_ids.append(vid)
+                    else:
+                        tok = get_continuation_token(it)
+                        if tok:
+                            cont_token = tok
 
-    pages = 0
-    while cont_token and api_key and pages < 30:
-        pages += 1
-        cdata = fetch_continuation(api_key, client_ver, cont_token)
-        cont_token = None
-        for act in cdata.get("onResponseReceivedActions", []):
-            for it in act.get("appendContinuationItemsAction", {}).get("continuationItems", []):
-                if "lockupViewModel" in it:
-                    vid = it["lockupViewModel"].get("contentId")
-                    if vid:
-                        video_ids.append(vid)
-                else:
-                    tok = get_continuation_token(it)
-                    if tok:
-                        cont_token = tok
+            pages = 0
+            while cont_token and api_key and pages < 30:
+                pages += 1
+                cdata = fetch_continuation(api_key, client_ver, cont_token)
+                cont_token = None
+                for act in cdata.get("onResponseReceivedActions", []):
+                    for it in act.get("appendContinuationItemsAction", {}).get("continuationItems", []):
+                        if "lockupViewModel" in it:
+                            vid = it["lockupViewModel"].get("contentId")
+                            if vid:
+                                video_ids.append(vid)
+                        else:
+                            tok = get_continuation_token(it)
+                            if tok:
+                                cont_token = tok
 
-    # Preserve order while deduplicating
-    seen: set[str] = set()
-    ordered = []
-    for vid in video_ids:
-        if vid not in seen:
-            seen.add(vid)
-            ordered.append(vid)
-    return playlist_id, ordered
+            seen: set[str] = set()
+            ordered = []
+            for vid in video_ids:
+                if vid not in seen:
+                    seen.add(vid)
+                    ordered.append(vid)
+            return playlist_id, ordered
+        except Exception as err:
+            last_err = err
+            if attempt < max_retries:
+                time.sleep(1.2 * (attempt + 1))
+    raise last_err or RuntimeError(f"Failed to fetch playlist {playlist_id}")
 
 
 def parse_story_metadata(raw_title: str, playlist_titles: list[str]) -> dict[str, Any]:
@@ -823,6 +837,18 @@ def sync_via_rss(out_path: Path = OUT_PATH) -> bool:
 
 def full_scrape_main(out_path: Path = OUT_PATH) -> None:
     t0 = time.time()
+    baseline: dict[str, Any] = {}
+    if out_path.exists():
+        try:
+            baseline = json.loads(out_path.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    baseline_playlists = {
+        p["id"]: p.get("videoIds", [])
+        for p in baseline.get("playlists", [])
+        if isinstance(p, dict) and p.get("id")
+    }
+
     print("1/5 Fetching channel header & all videos...")
     videos_data, raw_videos = fetch_paginated_tab("videos")
     channel = extract_channel_info(videos_data)
@@ -857,11 +883,17 @@ def full_scrape_main(out_path: Path = OUT_PATH) -> None:
             playlist_map[pid]["isPodcast"] = True
 
     print(f"4/5 Fetching tracklists for {len(playlist_map)} playlists...")
-    with ThreadPoolExecutor(max_workers=8) as pool:
+    with ThreadPoolExecutor(max_workers=4) as pool:
         futures = {pool.submit(fetch_playlist_videos, pid): pid for pid in playlist_map}
         for fut in as_completed(futures):
-            pid, vids = fut.result()
-            playlist_map[pid]["videoIds"] = vids
+            pid = futures[fut]
+            try:
+                _, vids = fut.result()
+                playlist_map[pid]["videoIds"] = vids
+            except Exception as err:
+                fallback_vids = baseline_playlists.get(pid, [])
+                playlist_map[pid]["videoIds"] = fallback_vids
+                print(f"    -> Warning: playlist {pid} fetch failed ({err}); retained {len(fallback_vids)} baseline tracks.")
 
     video_to_playlists: dict[str, list[dict[str, str]]] = {}
     for pid, pinfo in playlist_map.items():
